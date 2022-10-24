@@ -1,8 +1,82 @@
+[Front-End Study Index](Front-End%20Study%20Index.md)
+프론트엔드 목차 페이지
+
 # React 
 
 ## DOM ? Virtual DOM ?
+
+### DOM
+
 DOM은 MDN(Mozilla)에서는 DOM을 "HTML, XML document와 상호작용하고 표현하는 API이다, DOM은 브라우저에서 로드되며, 노드 트리로 표현하는 document 모델이다."라고 코멘트 하고있다.
 
+<img src="../첨부파일/Pasted_image_20221025073952.png" />
+
+![](Pasted_image_20221025073952.png)
+
+DOM의 가장 큰 특징은 노드 트리형태 즉 내가 구성한 화면은 각각 하위 노드가 있고 하위 노드는 상위 노드가 로드 되어야지 로드되는 트리의 형태를 가지므로 상위 컴포넌트가 가진 스타일 및 옵션을 선 반영하게 된다.
+그 이후에 자기 자신 노드가 가진 스타일 및 옵션 적용하게 된다.
+
+DOM Rendering의 가장 큰 특징은 모든 노드가 로드되어야지 페이지를 보여준다. 
+
+![](Pasted%20image%2020221025074050.png)
+
+보시다 싶이 내가 제일 하위 노드를 수정한다고 하면, 그 노드 로드하기 위해 수많은 상위 노드들을 렌더링하여 형태를 만든 후 그 다음에 하위 노드를 랜더링하는 비효율적인 랜더링 방식을 취한다. top-down
+(내 상위 노드들이 랜더링 돼야지 하위 노드가 랜더링할 수 있기 때문 - tree 구조)
+
+### Virtual DOM
+
+virtual DOM은 수정사항이 있더라도 한번만 렌더링하는 기술, 가상 메모리에 수정사항을 저장해서 재랜더링 할때 한번에 랜더링 할 수있도록 도와주는 기술을 의미.
+
+보통의 DOM은 수정사항이 있으면 그 위의 노드들을 모두 랜더링해야하는 불편함이 있었다면 virtual dom은 그 수정사항을 모두 한번에 처리해주는 기술이므로 많은 작업을 해야 수정사항을 확인할 수 있는 dom보다 효율적으로 랜더링하게된다.
+
+![](Pasted%20image%2020221025074527.png)
+
+가상 돔을 생성하여 그 안 가상 메모리를 사용하여 내부적으로 수정사항을 모두 처리하여 실제로 브라우저에서 런타임 했을 때 그 화면이 한번만 랜더링 하도록 하는 기술
+
+React는 이 virtual dom 형식을 채택하여, 하나의 컴포넌트의 변경사항에 따라서 한번의 렌더링을 지원하고 있다. 이런 특징 덕에 한 페이지에서 interactive 한 페이지를 보여줄 수 있음.
+
+![](Pasted%20image%2020221025074900.png)
+
+
+## SPA (Single Page Application)
+
+SPA, 싱글페이지 애플리케이션은 하나의 페이지를 불러올때 html, js, css 요소들을 한번에 불러오는 방식을 말함. 페이지 또는 후속 페이지의 상호 작용은 서버로부터 새로운 페이지를 불러오지 않음. 즉 페이지가 다시 로드되지 않음.
+
+React를 사용하여 SPA를 만들 수 있으나, react를 쓰면 무조건적으로 해야하는 필수 사항은 아님. 
+
+# React Hooks
+
+Hooks는 리액트 16.8 에 새로 도입된 기능 함수형 컴포넌트에서도 상태 관리를 할 수 있는 state, 렌더링 직후 작업을 설정하는 effect 기능들을 통해 작업 다양성 추구
+
+## useState
+
+비동기적 상태 관리에서 동기 상태 관리와 충돌하는 경우
+
+```JSX
+function App() {
+
+	const [count, setCount] = useState(0)
+
+	const plusCount = () => {
+		setCount(count + 1)
+	}
+
+	const asyncPlusCount = () => {
+		setTimeout(() => {
+			setCount((prev) => prev+1)
+		}, [2000])
+	}
+
+	<div>
+		{ count }
+	</div>
+}
+```
+
+state는 말 그대로 상태이기 때문에, setCount를 할때 참조되는 값이 count의 현재 상태가 아닌 함수를 실행할때 그때의 값을 참조하여 사용되기 때문에, setCount를 할 때의 시점의 state value를 바로 가져와 쓸 수 있는 내부 함수를 통해서 변경해야함.
+
+
+# 기타 개발 이슈
 
 ## Tree Shaking
 #개발이슈 #javascript #tech #speed #improvement
@@ -48,53 +122,3 @@ import { unique, implode, explode } from "array-utils"
 롤업은 웹팩과 다르게 빌드 결과물을 ES6 모듈 형태로 만들 수 있음, ES6 모듈로 빌드가 가능하다는 것은 사용하는 쪽에서 라이브러리 전체를 불러오는 게 아니라 필요한 부분만 콕 집어서 가져올 수 있다는 특징 존재,
 
 
-# React Hooks
-
-Hooks는 리액트 16.8 에 새로 도입된 기능
-함수형 컴포넌트에서도 상태 관리를 할 수 있는 state, 렌더링 직후 작업을 설정하는 effect 기능들을 통해 작업 다양성 추구
-
-## useState
-
-비동기적 상태 관리에서 동기 상태 관리와 충돌하는 경우
-```JSX
-function App() {
-
-	const [count, setCount] = useState(0)
-
-	const plusCount = () => {
-		setCount(count + 1)
-	}
-
-	const asyncPlusCount = () => {
-		setTimeout(() => {
-			setCount((prev) => prev+1)
-		}, [2000])
-	}
-
-	<div>
-		{ count }
-	</div>
-}
-```
-
-state는 말 그대로 상태이기 때문에, setCount를 할때 참조되는 값이 count의 현재 상태가 아닌 함수를 실행할때 그때의 값을 참조하여 사용되기 때문에, setCount를 할 때의 시점의 state value를 바로 가져와 쓸 수 있는 내부 함수를 통해서 변경해야함.
-
-
-## MUI with Tailwind ([[Tailwind]] N [[javascript N Typescript]])
-
-### 개요
-
-### 적용 사례
-
-### 적용 방법
-
-### 장단점
-
-## PWA
-### 개요
-
-### 적용 사례
-
-### 적용 방법
-
-### 장단점
