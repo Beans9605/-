@@ -1,4 +1,4 @@
-[Front-End Study Index](Front-End%20Study%20Index.md)
+[[Front-End Study Index]]
 프론트엔드 목차 페이지
 
 # React 
@@ -8,8 +8,6 @@
 ### DOM
 
 DOM은 MDN(Mozilla)에서는 DOM을 "HTML, XML document와 상호작용하고 표현하는 API이다, DOM은 브라우저에서 로드되며, 노드 트리로 표현하는 document 모델이다."라고 코멘트 하고있다.
-
-<img src="../첨부파일/Pasted_image_20221025073952.png" />
 
 ![](Pasted_image_20221025073952.png)
 

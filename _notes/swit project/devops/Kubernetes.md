@@ -1,4 +1,4 @@
-[Devops Study Index](Devops%20Study%20Index.md)
+[[Devops Study Index]]
 Devops 목차 페이지
 
 # Kubernetes
