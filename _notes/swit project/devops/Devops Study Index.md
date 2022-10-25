@@ -6,3 +6,6 @@
 
 [[Kubernetes]]
 Docker와 같은 컨테이너들을 컨트롤 하는 컨테이너 오케스트레이션 도구
+
+[[네트워크 정책]]
+Kubernetes Network Policy 기본 정리

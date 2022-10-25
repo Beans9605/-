@@ -1,3 +1,6 @@
+```toc
+```
+
 [[Front-End Study Index]]
 프론트엔드 목차 페이지
 
@@ -73,6 +76,18 @@ function App() {
 ```
 
 state는 말 그대로 상태이기 때문에, setCount를 할때 참조되는 값이 count의 현재 상태가 아닌 함수를 실행할때 그때의 값을 참조하여 사용되기 때문에, setCount를 할 때의 시점의 state value를 바로 가져와 쓸 수 있는 내부 함수를 통해서 변경해야함.
+
+내부 함수의 구조에 대해서 자세히 설명하자면 아래와 같다.
+
+```javascript
+
+const [count, setCount] = useState(0)
+
+const asyncPlus = () => {
+	
+}
+
+```
 
 
 # 기타 개발 이슈

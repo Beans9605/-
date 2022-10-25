@@ -1,5 +1,12 @@
+```toc
+```
+
 [[Devops Study Index]]
 Devops 목차 페이지
+
+#kubernetes #service #deployment #serviceaccount #clusterRoleBinding
+
+출처 - 쿠버네티스를 활용한 클라우드 네이티브 데브옵스
 
 # Kubernetes
 상용 워크로드를 위한 대규모 컨테이너 오케스트레이터
@@ -458,3 +465,219 @@ docker-for-desktop   Ready     master    1d        v1.10.0
 	- 실제로 트러블 슈팅에서 pod 혹은 deployment가 왜 안도는지,
 	- node가 왜 안올라가는지
 	- 여러 문제를 확인할 수 있도록 하는 도구
+
+```bash
+$ kubectl describe pod/demo-dev-6c96484c48-69vss
+Name:           demo-dev-6c96484c48-69vss
+Namespace:      default
+Node:           docker-for-desktop/10.0.2.15
+Start Time:     Wed, 06 Jun 2018 10:48:50 +0100
+...
+Containers:  
+  demo:    
+    Container ID:   docker://646aaf7c4baf6d...
+    Image:          cloudnatived/demo:hello...
+Conditions:  
+  Type           Status
+  Initialized    True
+  Ready          True
+  PodScheduled   True
+...
+Events:  
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  1d    default-scheduler  Successfully assigned demo-dev...
+  Normal  Pulling    1d    kubelet            pulling image "cloudnatived/demo...
+...
+```
+예제 출력 결과에서 kubectl이 이미지 식별자, 상태와 같은 컨테이너 정보와 컨테이너에서 발생한 이벤트 목록을 제공
+
+### 리소스 활용하기
+YAML 메니페스트를 통해 배포하지만, 겹치는 항목이 많다는것이 흠.
+한번만 지정하고 쿠버네티스 메니페스트를 통해 참조할 수 있도록 반복되는 항목의 YAML 파일을 만들고 관리할 수있도록 **헬름**을 사용
+
+## 헬름: 쿠버네티스 패키지 매니저
+헬름은 쿠버네티스 패키지 매니저, helm 명령줄 도구를 사용(혹은 직접 만들거나)하면 애플리케이션을 설치하고 설정 가능, 헬름 **차트**라 불리는 패키지를 생성하면 애플리케이션을 실행하는데 필요한 리소스, 의존성, 구성 가능한 변수를 지정 가능
+
+### 헬름 설치
+운영체제 별 설치가이드 (https://helm.sh/docs/using_helm/#installing-helm)
+
+설치한 후에는 클러스터에 접근할 수 있도록 권한을 부여하는 쿠버네티스 리소스를 만들어야함.
+```yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tiller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tiller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: tiller
+    namespace: kube-system
+```
+
+#### 헬름 ServiceAccount 중요 설명
+이 리소스는 tiller라는 접근 권한을 가진 서비스계정을 만드는 작업임
+그 계정에 ClusterRoleBinding, 즉 클러스터 접근 역할을 부여해주는 것으로 k8s 그룹 전체, kube-system의 전체 권한을 얻는 방법
+
+해당 리소스를 통해서 적용 후 helm을 해당 service account에 등록해주도록 해야함.
+```bash
+$ cd ../hello-helm
+kubectl apply -f helm-auth.yaml
+serviceaccount "tiller" created
+clusterrolebinding.rbac.authorization.k8s.io "tiller" created
+```
+
+필요한 권한을 tiller라는 이름의 service account로 얻었으니 해당 권한을 부여해주기
+``` bash
+$ helm init --service-account tiller
+$HELM_HOME has been configured at /Users/john/.helm.
+```
+헬름이 초기화 완료하기 위해선 5분 정도의 시간 필요
+```bash
+$ helm version
+Client: &version.Version{SemVer:"v2.9.1",
+GitCommit:"20adb27c7c5868466912eebdf6664e7390ebe710", GitTreeState:"clean"}
+Server: &version.Version{SemVer:"v2.9.1",
+GitCommit:"20adb27c7c5868466912eebdf6664e7390ebe710", GitTreeState:"clean"}
+```
+
+### 헬름 차트 설치
+총 네 개의 yaml 파일과 templates
+
+```yaml
+# Chart.yaml
+name: demo
+sources:
+- https://github.com/cloudnativedevops/cloudnatived
+version: 1.0.1
+```
+
+```yaml
+# production_values.yaml
+environment: production
+```
+
+```yaml
+# staging-values.yaml
+environment: staging
+```
+
+```yaml
+# values.yaml
+environment: development
+container:
+  name: demo
+  port: 8888
+  image: cloudnatived/demo
+  tag: hello
+replicas: 1
+```
+
+```yaml
+# templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.container.name }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.container.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.container.name }}
+        environment: {{ .Values.environment }}
+    spec:
+      containers:
+        - name: {{ .Values.container.name }}
+          image: {{ .Values.container.image }}:{{ .Values.container.tag }}
+          ports:
+            - containerPort: {{ .Values.container.port }}
+          env:
+            - name: environment
+              value: {{ .Values.environment }}
+```
+
+```yaml
+# templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.container.name }}-service
+  labels:
+    app: {{ .Values.container.name }}
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: {{ .Values.container.port }}
+  selector:
+    app: {{ .Values.container.name }}
+  type: LoadBalancer
+```
+
+헬름 차트에서 사용할 파일들, 각각의 환경변수를 사용할 수 있도록 환경변수 지정과 사용
+
+먼저 헬름을 사용해서 애플리케이션을 설치한다면, 이전에 작업했던 모든 디플로이먼트 리소스를 정리해야함.
+```bash
+$ kubectl delete all --selector app=demo
+```
+
+```bash
+$ helm install --name demo ./k8s/demo
+NAME:   demo
+LAST DEPLOYED: Wed Jun  6 10:48:50 2018
+NAMESPACE: default
+STATUS: DEPLOYED
+RESOURCES:
+==> v1/Service
+NAME            TYPE       CLUSTER-IP     EXTERNAL-IP  PORT(S)   AGE
+demo-service    ClusterIP  10.98.231.112  <none>       80/TCP    0s
+==> v1/Deployment
+NAME      DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
+demo      1        1        1           0          0s
+==> v1/Pod(related)
+NAME                       READY  STATUS             RESTARTS  AGE
+demo-6c96484c48-69vss      0/1    ContainerCreating  0         0s
+```
+이전 예제와 같이 헬름이 (파드를 시작한) 디플로이먼트 리소스와 서비스를 생성했음을 확인할 수 있음. helm install은 **헬름 릴리스**라는 쿠버네티스 오브젝트를 생성하여 이를 수행
+
+### 차트, 리포지터리, 릴리스
+헬름의 중요한 용어 세 가지
+- **차트**, 쿠버네티스에서 애플리케이션을 실행하는데 필요한 모든 리소스 정의를 포함한 헬름 패키지
+- **리포지터리**, 차트가 모여 있는 공유할 수 있는 공간
+- **릴리스**, 쿠버네티스 클러스터에서 실행되는 차트의 특정 인스턴스
+서로 다른 사이트를 서비스하는 Nginx 웹서버 차트와 같이 하나의 차트를 동일한 클러스터에 여러 번 설치하고 실행할 수 있음, 차트의 인스턴스는 서로 다른 릴리스
+
+### 헬름 릴리스 목록 확인
+
+```bash
+$ helm list
+NAME    REVISION UPDATED                  STATUS   CHART      NAMESPACE
+demo    1        Wed Jun  6 10:48:50 2018 DEPLOYED demo-1.0.1 default
+```
+특정 릴리스의 정확한 상태를 확인하려면 helm status와 릴리스 이름을 입력하고 실행
+
+
+## 쿠버네티스 오브젝트 다루기 정리
+- 파드는 쿠버네티스의 기본 작업 단위로 스케줄링이 될 단일 컨테이너나 컨테이너의 그룹을 지정한다. 
+- 디플로이먼트는 파드를 선언적으로 관리하는 고수준 쿠버네티스 리소스다. 배포, 스케줄링, 업데이트 작업을 수행하며 필요하다면 파드를 재시작한다. 
+- 서비스는 쿠버네티스의 로드 밸런서나 프록시에 해당하며 IP 주소나 DNS 이름을 통해 트래픽을 일치하는 파드로 라우팅한다.  
+- 쿠버네티스 스케줄러는 노드에서 아직 실행되지 않는 파드를 감시하고 적합한 노드를 찾은 다음 해당 노드의 kubelet이 파드를 실행하도록 지시한다.   
+- 디플로이먼트와 같은 리소스는 쿠버네티스의 내부 데이터베이스에 레코드로 표시된다. 외부적으로 이러한 리소스는 YAML 형식의 텍스트 파일(매니페스트라고 함 )로 표현된다. 
+- 쿠버네티스를 활용한 클라우드 네이티브 데브옵스매니페스트는 리소스의 의도한 상태를 선언한다.  
+- kubectl은 쿠버네티스와 상호작용하기 위한 주요 도구로 매니페스트를 적용하고 리소스를 조회, 변경, 삭제하는 등의 많은 작업을 수행할 수 있다.  
+- 헬름은 쿠버네티스 패키지 매니저로 쿠버네티스 애플리케이션을 쉽게 구성하고 배포할 수 있게 해준다. 직접 원시 YAML 파일을 관리할 필요 없이 하나의 값 세트(애플리케이션 이름이나 수신 포트와 같은 )나 템플릿의 세트를 사용하여 쿠버네티스 YAML 파일을 생성할 수 있게 해준다.
+
